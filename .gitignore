@@ -1,0 +1,5 @@
+initramfs/
+initramfs-mod.cpio.gz
+.gdb_history
+kghidra*
+env/
