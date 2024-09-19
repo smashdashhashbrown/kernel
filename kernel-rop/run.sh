@@ -13,6 +13,7 @@ qemu-system-x86_64 \
     -monitor /dev/null \
     -no-reboot \
     -s \
-    -append "console=ttyS0 nopti nokaslr quiet panic=1" # SMEP/SMAP enabled only
+    -append "console=ttyS0 kpti=1 nokaslr quiet panic=1"
+    # -append "console=ttyS0 nopti nokaslr quiet panic=1" # SMEP/SMAP enabled only
     # -append "console=ttyS0 nosmep nosmap nopti nokaslr quiet panic=1" # No kernel protections
     # -append "console=ttyS0 kaslr kpti=1 quiet panic=1" # kaslr enabled
