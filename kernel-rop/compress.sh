@@ -2,7 +2,7 @@
 
 set -ex
 
-EXPLOIT=${1:-"exploit-kpti-tramp.c"}
+EXPLOIT=${1:-"exploit-kpti-signal-handler.c"}
 BDIR=${2:-"initramfs"}
 OUT=${3:-"initramfs-mod.cpio.gz"}
 CURR=`pwd`
