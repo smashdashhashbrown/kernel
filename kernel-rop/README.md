@@ -207,7 +207,18 @@ The exploit first leaks the canary from the relative read vulnerability in `hack
 
 ### SMEP/SMAP
 
+SMEP/SMAP will be the first kernel protections enabled. Supervisor mode execution protection (SMEP) is a linux kernel security mechanism that prevents execution of userland code while in kernel context. This will stop `exploit-no-protections.c` from working by removing the ability for the kernel to execute our userland privilege escalation code. Supervisor mode access prevention (SMAP) is an extension of SMEP that prevents read and write access to userland memory while the AC flag is set in RFLAGS.
+
+Uncomment the line `-append "console=ttyS0 nopti nokaslr quiet panic=1"` to emulate the kernel with only SMEP/SMAP enabled. The exploit source code for exploiting SMEP/SMAP is `exploit-smep-smap.c`.
+
+The mechanism for bypassing SMEP/SMAP is using return-oriented programming (ROPs). This is a exploitation technique that uses existing gadgets within binaries (in this case, the kernel itself) to gain remote code execution. Essentially, we are leveraging the existing code in the kernel against itself to execute what we want. `exploit-smep-smap.c` now overwrites the IP on the stack with a ROP-chain that executes `prepare_kernel_cred`, `commit_creds`, and the kernel-user context switch to gain a root shell.
+
 ### KPTI
 
 ### KASLR/FG-KASLR
 
+## Sources
+
+- [Learning Linux kernel exploitation - Part 1 - Laying the groundwork](https://0x434b.dev/dabbling-with-linux-kernel-exploitation-ctf-challenges-to-learn-the-ropes/#kpti)
+- [SMEP](https://breaking-bits.gitbook.io/breaking-bits/exploit-development/linux-kernel-exploit-development/supervisor-mode-execution-protection-smep)
+- [SMAP](https://en.wikipedia.org/wiki/Supervisor_Mode_Access_Prevention)
