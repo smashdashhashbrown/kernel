@@ -215,7 +215,9 @@ The mechanism for bypassing SMEP/SMAP is using return-oriented programming (ROPs
 
 ### KPTI
 
-The next kernel protection to be enabled is kernel page-table isolation (KPTI). KPTI seperates user-land and kernel-land page tables entirely. There is a page-table dedicated for kernel-land use that contain both kernel and user addresses and another page-table for userland use that contains user addresses and a restricted/limited set of kernel-space mappings that allow for systemm calls, interrupts, and exceptions.
+The next kernel protection to be enabled is kernel page-table isolation (KPTI). KPTI seperates user-land and kernel-land page tables entirely. There is a page-table dedicated for kernel-land use that contain both kernel and user addresses and another page-table for userland use that contains user addresses and a restricted/limited set of kernel-space mappings that allow for systemm calls, interrupts, and exceptions. The following pictures depicts this:
+
+![kpti](./images/Kernel_page-table_isolation.svg.png)
 
 Two ways have been demonstrated here to bypass KPTI.
 
