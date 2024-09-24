@@ -229,6 +229,27 @@ To emulate KPTI and SMEP/SMAP, uncomment this line in `run.sh`: `-append "consol
 
 ### KASLR/FG-KASLR
 
+Kernel address space layout randomization (KASLR) is a protection mechanism that loads the kernel into a random location in memory. This prevents the use of ROP gadgets without a leak of the kernel base address. Fine grained KASLR (FG-KASLR) builds upon this by randomizing function addresses within the kernel itself.
+
+`exploit-full-tramp.c` is the exploit source code against the kernel with full protections. KASLR is defeated by leaking a kernel address located at 0x130 offset from the stack leak. This gives us the base we need to calculate ROP gadget offsets. However, we still need to deal with FG-ASLR. A fortunate fact about FG-KASLR is that not all functions are randomized, so only some ROP gadgets and functions will be affected by this. However, `prepare_kernel_cred` and `commit_creds` are affected.
+
+To determine where these functions are, we must look at their respective `ksymtab` structs that contain their offset value. The struct is defined as follows:
+
+```
+// Struct definition
+struct kernel_symbol {
+    int value_offset;
+    int name_offset;
+    int namespace_offset;
+}
+// Location of structs in kernel
+/ # cat /proc/kallsyms | grep -E "ksymtab_commit_creds|ksymtab_prepare_kernel_cred"
+ffffffffbc187d90 r __ksymtab_commit_creds
+ffffffffbc18d4fc r __ksymtab_prepare_kernel_cred
+```
+
+To determine the location of a function affected by FG-KASLR (e.g. commit_creds), the location can be determined by adding the offset to the location of the symtab address, i.e. `__ksymtab_commit_creds + __ksymtab_commit_creds->value_offset`. `exploit-full-tramp.c` does this through ROPs to gain a root shell.
+
 ## Sources
 
 - [Learning Linux kernel exploitation - Part 1 - Laying the groundwork](https://0x434b.dev/dabbling-with-linux-kernel-exploitation-ctf-challenges-to-learn-the-ropes/#kpti)
