@@ -1,10 +1,12 @@
-# General Kernel Protections and Kernel-ROP Writeup
+# General Kernel Protections and Kernel-ROP Writeup/Report
 
 ## Dependencies
 
-- Developed/tested on Ubuntu 22.04
-- gcc
-- qemu-system-x86_64
+Developed/tested on Ubuntu 22.04
+- gcc (Ubuntu 11.4.0-1ubuntu1~22.04) 11.4.0: `sudo apt install build-essential`
+- qemu-system-x86_64 6.2.0 (Debian 1:6.2+dfsg-2ubuntu6.22): `apt-get install qemu-system`
+- cpio (GNU cpio) 2.13: `apt install cpio`
+
 
 ## Instructions
 
