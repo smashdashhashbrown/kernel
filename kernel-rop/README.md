@@ -215,6 +215,16 @@ The mechanism for bypassing SMEP/SMAP is using return-oriented programming (ROPs
 
 ### KPTI
 
+The next kernel protection to be enabled is kernel page-table isolation (KPTI). KPTI seperates user-land and kernel-land page tables entirely. There is a page-table dedicated for kernel-land use that contain both kernel and user addresses and another page-table for userland use that contains user addresses and a restricted/limited set of kernel-space mappings that allow for systemm calls, interrupts, and exceptions.
+
+Two ways have been demonstrated here to bypass KPTI.
+
+First is the KPTI-trampoline technique that utilizes kernel function `swapgs_restore_regs_and_return_to_usermode` that will switch context between kernel and user-dedicated page-tables. `exploit-kpti-tramp.c` demonstrates this by simply replacing the `swapgs` instruction to a call to `swapgs_restore_regs_and_return_to_usermode`.
+
+Second is catching the segfault signal with a signal handler and calling a root shell in the signal handler function. Attempting to execute userland code in the kernel-page context will generate a user segmentation fault. However, we can simply just catch this signal and pop a shell anyways. This is demonstrated in `exploit-kpti-signal-handler.c`.
+
+To emulate KPTI and SMEP/SMAP, uncomment this line in `run.sh`: `-append "console=ttyS0 kpti=1 nokaslr quiet panic=1"`.
+
 ### KASLR/FG-KASLR
 
 ## Sources
@@ -222,3 +232,4 @@ The mechanism for bypassing SMEP/SMAP is using return-oriented programming (ROPs
 - [Learning Linux kernel exploitation - Part 1 - Laying the groundwork](https://0x434b.dev/dabbling-with-linux-kernel-exploitation-ctf-challenges-to-learn-the-ropes/#kpti)
 - [SMEP](https://breaking-bits.gitbook.io/breaking-bits/exploit-development/linux-kernel-exploit-development/supervisor-mode-execution-protection-smep)
 - [SMAP](https://en.wikipedia.org/wiki/Supervisor_Mode_Access_Prevention)
+- [KPTI](https://en.wikipedia.org/wiki/Kernel_page-table_isolation)
