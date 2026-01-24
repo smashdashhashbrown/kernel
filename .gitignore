@@ -8,3 +8,4 @@ env/
 *.cmd
 *.symvers
 *.order
+*.mod
