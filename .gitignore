@@ -3,3 +3,8 @@ initramfs-mod.cpio.gz
 .gdb_history
 kghidra*
 env/
+*.o
+*.ko
+*.cmd
+*.symvers
+*.order
