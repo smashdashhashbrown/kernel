@@ -87,24 +87,52 @@ static struct file* my_get_task_exe_file(struct task_struct *ctx) {
     struct file *exe_file = NULL;
     struct mm_struct *mm;
 
+    /*
+    The `unlikely` macro is a branch prediction hint used to inform the compiler
+    that a certain condition is expected to be false most of the time.
+
+    This helps the compiler optimize code layout to improve performance by reducing
+    branch mispredictions and improving instruction cache efficiency.
+    */
     if (unlikely(!ctx)) {
-        // pr_info("MB EDR drv - unlikely condition\n");
         return NULL;
     }
 
+    /*
+    Spinlock that is used to protect fileds within the locked
+    task_struct ctx (process descriptor) from concurrent access.
+    */
     task_lock(ctx);
     mm = ctx->mm;
 
+    // PF_KTHREAD is used to identify a kernel thread
     if (mm && !(ctx->flags & PF_KTHREAD)) {
-        // pr_info("MB EDR drv - PF_KTHREAD condition %p\n", mm);
+        /* RCU
+        There's a whole "book" on RCU: https://docs.kernel.org/RCU/whatisRCU.html
+
+        RCU is a synchronization mechanism added to the linux kernel that is optimized
+        for read-mostly situations.
+
+        rcu_read_lock() marks the beginning of an RCU read-side critical section
+        */
         rcu_read_lock();
 
+        /*
+        The rcu_dereference macro is a fundamental component of the Read-Copy-Update
+        (RCU) synchronization mechanism. It is used by a reader thread to safely access
+        a pointer that is protected by RCU. Guaranteeing that it sees a consistent
+        state of the data structure, even while an updater thread may be concurrently
+        modifying it.
+        */
         exe_file = rcu_dereference(mm->exe_file);
+        /*
+        get_file_rcu is a kernel mechanism to safely acquire a reference to a struct file
+        pointer in a RCU read-side critical section, primarily for lockless lookups
+        of open files.
+        */
         if (exe_file && !get_file_rcu(&exe_file)) {
-            // pr_info("MB EDR drv - get_file_rcu condition : %p\n", exe_file);
             exe_file = NULL;
         }
-        // pr_info("MB EDR drv - exe_file : %p\n", exe_file);
 
         rcu_read_unlock();
     }
@@ -142,7 +170,7 @@ int security_hook_entry(struct kretprobe_instance *ri, struct pt_regs *regs) {
         return 0;
     }
 
-    pr_info("MB EDR drv - Allowing %s\n", res);
+    // pr_info("MB EDR drv - Allowing %s\n", res);
 
     // Return 1: Do not execute the exit calback (security_hook_exit)
     return 1;
