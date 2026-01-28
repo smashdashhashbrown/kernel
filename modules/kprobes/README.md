@@ -30,5 +30,9 @@ When you call `register_kretprobe()`, Kprobes establishes a kprobe at the entry 
 
 When the probed function executes its return instruction, control passes to the trampoline and that probe is hit. Kprobes trampoline handler calls the user-specified return handler associated with the kretprobe, then sets the saved IP to the saved return address, and that's where execution resumes upon return from the trap.
 
+# Caveats
 
+kprobes must be enabled and compiled into the kernel in order to make use of this feature. If it is not configured in the running kernel, you will need to recompile the kernel to make use of kprobes or kretprobes. If it's already configured into the kernel but not enabled, you can simply enable kprobes.
+
+For x86 architectures, the system call table cannot be used to invoke a system call after commit `1e3ad78` since v6.9. This commit has been packported to long term stable kernels, like v5.15.154+, v6.185+, v6.6.26+, and v6.8.5+. In this case, a hook must be used through kprobes to intercept syscalls.
 
