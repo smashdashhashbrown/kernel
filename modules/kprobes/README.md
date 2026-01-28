@@ -1,5 +1,7 @@
 # kprobes
 
+[code](https://medium.com/@emanuele.santini.88/creating-a-linux-security-module-with-kprobes-blocking-network-of-targeted-processes-4046f50290f5)
+
 Kernel probes (kprobes) enables a privileged user to dynamically break into any kernel route and collect debugging/performance information non-disruptively. You can trap nearly all kernel code addresses (some parts of the kernel code are blacklisted.
 
 There are two types of probes:
