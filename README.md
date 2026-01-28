@@ -1,2 +1,3 @@
 # kernel
-Stuff located in kernel-rop directory
+
+Repository for me to try and learn all things kernel. 
