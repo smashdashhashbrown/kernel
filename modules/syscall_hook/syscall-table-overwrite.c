@@ -31,7 +31,7 @@ static inline void __write_cr0(unsigned long cr0) {
 #define __write_cr0 write_cr0
 #endif
 
-
+// The 16th bit is the Write Protection (WP) bit
 static void enable_write_protection(void) {
     unsigned long cr0 = read_cr0();
 
