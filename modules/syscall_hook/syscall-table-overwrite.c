@@ -13,11 +13,13 @@
 
 #define MOD_NAME "HOOKER"
 
+#define MAX_FILE_NAME_LENGTH 128
+
 static unsigned long **p_sys_call_table;
 // Acquire the system calls table address
 
 // syscall to replace
-static char *syscall_sym = "__x64_sys_openat";
+static char *syscall_sym = "__x64_sys_open";
 // module_param(syscall_sym, charp, 0644);
 
 
@@ -48,58 +50,61 @@ static void disable_write_protection(void) {
 
 /*
  * A pointer to the original system call. The reason we keep this, rather than call
- * the original function (sys_openat), is because somebody else might have replaced
+ * the original function (sys_open), is because somebody else might have replaced
  * the system call before us. Note that this is not 100% safe, because if another
- * module replace sys_openat before us, then when we are inserted, we will call the
+ * module replace sys_open before us, then when we are inserted, we will call the
  * function in that module - and it might be removed before we are.
  *
- * Another reason for this is that we cannot get sys_openat.
+ * Another reason for this is that we cannot get sys_open.
  * It  is a static variable, so it is not exported.
  */
 #ifdef CONFIG_ARCH_HAS_SYSCALL_WRAPPER
 static asmlinkage long (*original_call)(const struct pt_regs *);
 #else
-static asmlinkage long (*original_call)(int, const char __user *, int, umode_t);
+static asmlinkage long (*original_call)(const char __user *, int, umode_t);
 #endif
 
 /*
- * The function we will replace sys_openat (the function called when you call
+ * The function we will replace sys_open (the function called when you call
  * the open system call) with. To find the exact prototype, with the number and
  * type of arguments, we find the original function first (it is at fs/open.c).
  *
  * In theory, this means that we are tied to the current version of the kernel.
  * In practice, the system calls almost never change (it would wreck havok and
  * require programs to be recompiled, since the system calls are the interface
- * hebwteen the kernel and the processes.
+ * between the kernel and the processes.
  */
 #ifdef CONFIG_ARCH_HAS_SYSCALl_WRAPPER
-static asmlinkage long our_sys_openat(const struct pt_regs *regs)
+static asmlinkage long our_sys_open(const struct pt_regs *regs)
 #else
-static asmlinkage long our_sys_openat(int dfd, const char __user *fname, int flags, umode_t mode)
+static asmlinkage long our_sys_open(const char __user *fname, int flags, umode_t mode)
 #endif
 {
-    int i = 0;
-    char ch;
+    int ret = 0;
+    char ch[MAX_FILE_NAME_LENGTH + 1];
 
-    pr_info("[%s] UID %d opened :", MOD_NAME, __kuid_val(current_uid()));
+    memset(ch, 0, MAX_FILE_NAME_LENGTH + 1);
 
-    do {
 #ifdef CONFIG_ARCH_HAS_SYSCALL_WRAPPER
-        get_user(ch, (char __user *)regs->si + i);
+    ret = copy_from_user(ch, (char __user *)regs->si, MAX_FILE_NAME_LENGTH);
 #else  // !CONFIG_ARCH_HAS_SYSCALL_WRAPPER
-        get_user(ch, (char __user *)fname + i);
+    ret = copy_from_user(ch, (char __user *)fname, MAX_FILE_NAME_LENGTH);
 #endif // CONFIG_ARCH_HAS_SYSCALL_WRAPPER
-       i++;
-       pr_info("%c", ch);
-    } while (ch != 0);
-    pr_info("\n");
+    
+    if (ret != 0) {
+        pr_alert("[%s] copy_from_user failed\n", MOD_NAME);
+        goto orig_func;
+    }
 
-    // Call the original sys_openat - otherwise, we lose the ability
+    pr_info("[%s] UID %d opened : %s\n", MOD_NAME, __kuid_val(current_uid()), ch);
+
+orig_func:
+    // Call the original sys_open - otherwise, we lose the ability
     // top open files.
 #ifdef CONFIG_ARCH_HAS_SYSCALL_WRAPPER
     return original_call(regs);
 #else   // !CONFIG_ARCH_HAS_SYSCALL_WRAPPER
-    return original_call(dfd, fname, flags, mode);
+    return original_call(fname, flags, mode);
 #endif  // CONFIG_ARCH_HAS_SYSCALL_WRAPPER
 }
 
@@ -113,25 +118,25 @@ static int __init syscall_steal_start(void) {
         return -1;
     }
 
-    original_call = (void *)p_sys_call_table[__NR_openat];
+    original_call = (void *)p_sys_call_table[__NR_open];
 
     if (!p_sys_call_table || !original_call) {
         // pr_alert("[%s] Missing addresses:\n\tsys_call_table : %p\n\toriginal_call : %p\n", MOD_NAME, p_sys_call_table, original_call);
         return -1;
     }
 
-    pr_info("[%s] Addresses acquired:\n\t\tsys_call_table : %p\n\t\toriginal_call : %p\n\t\tour_call : %p\n", MOD_NAME, p_sys_call_table, original_call, our_sys_openat);
+    pr_info("[%s] Addresses acquired:\n\t\tsys_call_table : %p\n\t\toriginal_call : %p\n\t\tour_call : %p\n", MOD_NAME, p_sys_call_table, original_call, our_sys_open);
 
     disable_write_protection();
-    pr_info("[%s] PRE:  p_sys_call_table[%d] = %p\n", MOD_NAME, __NR_openat, p_sys_call_table[__NR_openat]);
+    pr_info("[%s] PRE:  p_sys_call_table[%d] = %p\n", MOD_NAME, __NR_open, p_sys_call_table[__NR_open]);
 
-    // Replace the openat function with ours
-    p_sys_call_table[__NR_openat] = (unsigned long *)our_sys_openat;
+    // Replace the open function with ours
+    p_sys_call_table[__NR_open] = (unsigned long *)our_sys_open;
 
-    pr_info("[%s] POST: p_sys_call_table[%d] = %p\n", MOD_NAME, __NR_openat, p_sys_call_table[__NR_openat]);
+    pr_info("[%s] POST: p_sys_call_table[%d] = %p\n", MOD_NAME, __NR_open, p_sys_call_table[__NR_open]);
     enable_write_protection();
 
-    pr_info("[%s] %s syscall replaced from %p to %p\n", MOD_NAME, syscall_sym, original_call, p_sys_call_table[__NR_openat]);
+    pr_info("[%s] %s syscall replaced from %p to %p\n", MOD_NAME, syscall_sym, original_call, p_sys_call_table[__NR_open]);
     return 0;
 }
 
@@ -140,16 +145,16 @@ static void __exit syscall_steal_exit(void) {
     if (!p_sys_call_table)
         return;
 
-    if (p_sys_call_table[__NR_openat] != (unsigned long *)our_sys_openat) {
+    if (p_sys_call_table[__NR_open] != (unsigned long *)our_sys_open) {
         pr_alert("[%s] Somebody else also played with the %s system_call\n", MOD_NAME, syscall_sym);
         pr_alert("[%s] System may be left in unstable state...\n", MOD_NAME);
     }
 
     disable_write_protection();
-    p_sys_call_table[__NR_openat] = (unsigned long *)original_call;
+    p_sys_call_table[__NR_open] = (unsigned long *)original_call;
     enable_write_protection();
 
-    pr_info("[%s] %s syscall restored.\n", MOD_NAME, syscall_sym);
+    pr_info("[%s] %s syscall restored to %p.\n", MOD_NAME, syscall_sym, p_sys_call_table[__NR_open]);
 
     msleep(2000);
 }
