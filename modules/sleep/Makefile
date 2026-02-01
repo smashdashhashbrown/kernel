@@ -1,4 +1,4 @@
-obj-m += chardev2.o
+obj-m += sleep.o
 
 PWD := $(CURDIR)
 
@@ -8,8 +8,8 @@ all: userland
 	$(MAKE) -C /lib/modules/$(shell uname -r)/build M=$(PWD) modules
 
 userland:
-	$(CC) userspace_ioctl.c -o userspace_ioctl $(CFLAGS)
+	$(CC) cat_nonblock.c -o cat_nonblock $(CFLAGS)
 
 clean:
 	$(MAKE) -C /lib/modules/$(shell uname -r)/build M=$(PWD) clean
-	rm -f userspace_ioctl
+	rm -f cat_nonblock
